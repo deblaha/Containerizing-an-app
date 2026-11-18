@@ -1,0 +1,75 @@
+# Docker
+# Build and push an image to Azure Container Registry
+# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
+
+trigger:
+- master
+
+resources:
+- repo: self
+
+variables:
+  - group: 'helloappvariables'
+
+  - name: dockerRegistryServiceConnection
+    value: '58ba0ce1-b576-43c8-9010-3dccc7c364d9'
+  - name: dockerfilePath 
+    value: '$(Build.SourcesDirectory)/dockerfile'
+  - name: vmImageName
+    value: 'ubuntu-latest'
+
+stages:
+- stage: Build
+  displayName: Build and push stage
+  jobs:
+  - job: Build
+    displayName: Build
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - task: Docker@2
+      displayName: Build and push an image to container registry
+      inputs:
+        command: buildAndPush
+        repository: $(imageRepository)
+        dockerfile: $(dockerfilePath)
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          v1.0.0
+
+- stage: Deploy
+  dependsOn: Build
+  displayName: Deploy
+  jobs:
+    - job: Deploy
+      displayName: Deploy
+      steps:
+        - task: TerraformInstaller@1
+          inputs:
+            terraformVersion: 'latest'
+        - task: TerraformTask@5
+          inputs:
+            provider: 'azurerm'
+            command: 'init'
+            workingDirectory: '$(System.DefaultWorkingDirectory)'
+            backendServiceArm: 'Azure subscription 1(47c374d6-3ed3-456c-886f-b6e3b3771aed)'
+            backendAzureRmResourceGroupName: '$(rg_name)'
+            backendAzureRmStorageAccountName: '$(storageaccname)'
+            backendAzureRmContainerName: '$(containername)'
+            backendAzureRmKey: '$(keyname)'
+
+          
+        - task: TerraformTask@5
+          inputs:
+            provider: 'azurerm'
+            command: 'plan'
+            workingDirectory: '$(System.DefaultWorkingDirectory)'
+            environmentServiceNameAzureRM: 'Azure subscription 1(47c374d6-3ed3-456c-886f-b6e3b3771aed)'
+
+        - task: TerraformTask@5
+          inputs:
+            provider: 'azurerm'
+            command: 'apply'
+            workingDirectory: '$(System.DefaultWorkingDirectory)'
+            commandOptions: '-auto-approve'
+            environmentServiceNameAzureRM: 'Azure subscription 1(47c374d6-3ed3-456c-886f-b6e3b3771aed)'

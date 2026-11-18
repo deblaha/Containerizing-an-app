@@ -1,0 +1,8 @@
+storage_name = "storageacc24231516"
+cont_name = "terraformcont"
+acr_name = "myacr1997"
+image_name = "helloapp"
+image_tag = "v1.0.0"
+loc_name = "WestEurope"
+rg_name = "dev-rg"
+sub_id = "47c374d6-3ed3-456c-886f-b6e3b3771aed"
